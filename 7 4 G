@@ -1,0 +1,158 @@
+"""G. Острова
+Тренировки по алгоритмам 7.0 от Яндекса — Занятие 4 (Ссылочные типы данных, двусвязные списки, B-деревья)
+https://contest.yandex.ru/contest/74968/problems/G/
+Ограничение времени	1 секунда
+Ограничение памяти	256 Мб
+Ввод	стандартный ввод или input.txt
+Вывод	стандартный вывод или output.txt
+Одно разбросанное на островах Океании государство решило создать сеть автомобильных дорог (вернее, мостов). По каждому мосту можно перемещаться в обе стороны. Был разработан план очередности строительства мостов, и известно, что после постройки всех мостов можно будет проехать по ним с каждого острова на каждый (возможно, через некоторые промежуточные острова).
+
+Однако этот момент может наступить до того, как будут построены все мосты. Вам необходимо определить такое минимальное количество мостов, после строительства которых (в порядке, определенном планом) можно будет попасть с любого острова на любой другой.
+
+Формат вывода
+Программа должна вывести единственное число — минимальное количество построенных мостов, после которого можно будет попасть с любого острова на любой другой.
+
+Моя попытка реализовать непересекающиеся множества
+"""
+import sys
+
+
+def main():
+    # Чтение всех входных данных сразу для ускорения обработки
+    input = sys.stdin.read().split()
+    ptr = 0  # Указатель на текущую позицию в входных данных
+    
+    n = int(input[ptr])  # Количество элементов
+    ptr += 1
+    m = int(input[ptr])  # Количество операций/связей
+    ptr += 1
+    
+    col = 0  # Неиспользуемая переменная (можно удалить)
+    dictsel = {}  # Словарь для хранения множеств связанных элементов
+    arrays = [0] * (n + 1)  # Массив для хранения родительских элементов (аналог DSU)
+    
+    # Частный случай - если всего 2 элемента, они соединятся за 1 операцию
+    if n == 2:
+        print(1)
+        return
+
+    # Обработка каждой операции/связи
+    for i in range(1, m + 1):
+        el = int(input[ptr])  # Первый элемент связи
+        ptr += 1
+        el2 = int(input[ptr])  # Второй элемент связи
+        ptr += 1
+
+        # Проверяем, нужно ли объединять элементы:
+        # 1. Элементы разные
+        # 2. Один из элементов еще не в множестве или они в разных множествах
+        if el != el2 and (arrays[el] == 0 or arrays[el2] == 0 or arrays[el] != arrays[el2]):
+            
+            # Случай 1: Оба элемента не принадлежат никакому множеству
+            if arrays[el] == 0 and arrays[el2] == 0:
+                arrays[el] = el  # Создаем новое множество с корнем el
+                arrays[el2] = el  # Присоединяем el2 к этому множеству
+                dictsel[el] = {el, el2}  # Сохраняем множество в словаре
+            
+            # Случай 2: el не в множестве, el2 - корень своего множества
+            elif arrays[el] == 0 and arrays[el2] == el2:
+                arrays[el] = el2  # Присоединяем el к множеству el2
+                dictsel[el2].add(el)  # Добавляем el в множество el2
+                if len(dictsel[el2]) == n:  # Если множество стало содержать все элементы
+                    print(i)
+                    return
+            
+            # Случай 3: el2 не в множестве, el - корень своего множества
+            elif arrays[el2] == 0 and arrays[el] == el:
+                arrays[el2] = el  # Присоединяем el2 к множеству el
+                dictsel[el].add(el2)  # Добавляем el2 в множество el
+                if len(dictsel[el]) == n:  # Если множество стало содержать все элементы
+                    print(i)
+                    return
+            
+            # Случай 4: el не в множестве, el2 уже в каком-то множестве
+            elif arrays[el] == 0:
+                arrays[el] = arrays[el2]  # Присоединяем el к множеству el2
+                dictsel[arrays[el2]].add(el)  # Добавляем el в множество el2
+                if len(dictsel[arrays[el2]]) == n:  # Если множество стало содержать все элементы
+                    print(i)
+                    return
+            
+            # Случай 5: el2 не в множестве, el уже в каком-то множестве
+            elif arrays[el2] == 0:
+                arrays[el2] = arrays[el]  # Присоединяем el2 к множеству el
+                dictsel[arrays[el]].add(el2)  # Добавляем el2 в множество el
+                if len(dictsel[arrays[el]]) == n:  # Если множество стало содержать все элементы
+                    print(i)
+                    return
+            
+            # Случай 6: el2 в чужом множестве, el - корень своего множества
+            elif arrays[el2] != el2 and arrays[el] == el:
+                # Объединение по размеру (чтобы меньший присоединить к большему)
+                if len(dictsel[el]) >= len(dictsel[arrays[el2]]):
+                    dictsel[el].update(dictsel[arrays[arrays[el2]]])  # Объединяем множества
+                    if len(dictsel[el]) == n:  # Проверка на полное множество
+                        print(i)
+                        return
+                    # Обновляем родительские ссылки для всех элементов меньшего множества
+                    for elem in dictsel[arrays[arrays[el2]]]:
+                        arrays[elem] = el
+                    arrays[arrays[el2]] = el  # Обновляем родителя для корня меньшего множества
+                else:
+                    # Аналогично, но если множество el меньше
+                    dictsel[arrays[arrays[el2]]].update(dictsel[arrays[el]])
+                    if len(dictsel[arrays[arrays[el2]]]) == n:
+                        print(i)
+                        return
+                    for elem in dictsel[arrays[el]]:
+                        arrays[elem] = arrays[el2]
+                    arrays[el] = arrays[el2]
+            
+            # Случай 7: el в чужом множестве, el2 - корень своего множества
+            elif arrays[el] != el and arrays[el2] == el2:
+                # Аналогично случаю 6, но для el2
+                if len(dictsel[el2]) >= len(dictsel[arrays[el]]):
+                    dictsel[el2].update(dictsel[arrays[arrays[el]]])
+                    if len(dictsel[el2]) == n:
+                        print(i)
+                        return
+                    for elem in dictsel[arrays[arrays[el]]]:
+                        arrays[elem] = el2
+                    arrays[arrays[el]] = el2
+                else:
+                    dictsel[arrays[arrays[el]]].update(dictsel[arrays[el2]])
+                    if len(dictsel[arrays[arrays[el]]]) == n:
+                        print(i)
+                        return
+                    for elem in dictsel[arrays[el2]]:
+                        arrays[elem] = arrays[el]
+                    arrays[arrays[el]] = arrays[el2]
+            
+            # Случай 8: Оба элемента в разных множествах (не корни)
+            elif arrays[el2] != el2 and arrays[el] != el:
+                # Объединение по размеру
+                if len(dictsel[arrays[el]]) >= len(dictsel[arrays[el2]]):
+                    if len(dictsel[arrays[el]]) == n:
+                        print(i)
+                        return
+                    dictsel[arrays[el]].update(dictsel[arrays[arrays[el2]]])
+                    for elem in dictsel[arrays[arrays[el2]]]:
+                        arrays[elem] = arrays[el]
+                    arrays[arrays[el2]] = arrays[el]
+                    if len(dictsel[arrays[el]]) == n:
+                        print(i)
+                        return
+                else:
+                    dictsel[arrays[el2]].update(dictsel[arrays[el]])
+                    if len(dictsel[arrays[arrays[el2]]]) == n:
+                        print(i)
+                        return
+                    for elem in dictsel[arrays[arrays[el]]]:
+                        arrays[elem] = arrays[el2]
+                        dictsel[arrays[arrays[el2]]].add(elem)
+                    arrays[arrays[el]] = arrays[el2]
+
+
+if __name__ == '__main__':
+    main()
+
